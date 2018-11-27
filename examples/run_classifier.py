@@ -35,7 +35,7 @@ from pytorch_pretrained_bert.modeling import BertForSequenceClassification
 from pytorch_pretrained_bert.optimization import BertAdam
 from pytorch_pretrained_bert.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
 
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s', 
+logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
@@ -97,6 +97,13 @@ class DataProcessor(object):
                 lines.append(line)
             return lines
 
+    @classmethod
+    def _read_csv(cls, input_file, quotechar=None):
+        """Reads a comma separated value file."""
+        import pandas as pd
+        df = pd.read_csv(input_file)
+        return df.iterrows()
+
 
 class MrpcProcessor(DataProcessor):
     """Processor for the MRPC data set (GLUE version)."""
@@ -128,6 +135,41 @@ class MrpcProcessor(DataProcessor):
             label = line[0]
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
+
+
+class GenericDataProcessor(DataProcessor):
+    """Generic customizable data processor."""
+
+    def __init__(self, labels):
+        self.labels = labels
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        logger.info("LOOKING AT {}".format(os.path.join(data_dir, "train.csv")))
+        return self._create_examples(
+            self._read_csv(os.path.join(data_dir, "train.csv")), "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_csv(os.path.join(data_dir, "dev.csv")), "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return self.labels
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            if i == 0:
+                continue
+            guid = "%s-%s" % (set_type, i)
+            text_a = line["text"]
+            label = line["tag"]
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label))
         return examples
 
 
@@ -405,14 +447,14 @@ def main():
                         type=int,
                         default=-1,
                         help="local_rank for distributed training on gpus")
-    parser.add_argument('--seed', 
-                        type=int, 
+    parser.add_argument('--seed',
+                        type=int,
                         default=42,
                         help="random seed for initialization")
     parser.add_argument('--gradient_accumulation_steps',
                         type=int,
                         default=1,
-                        help="Number of updates steps to accumualte before performing a backward/update pass.")                       
+                        help="Number of updates steps to accumualte before performing a backward/update pass.")
     parser.add_argument('--optimize_on_cpu',
                         default=False,
                         action='store_true',
@@ -424,6 +466,10 @@ def main():
     parser.add_argument('--loss_scale',
                         type=float, default=128,
                         help='Loss scaling, positive power of 2 values can improve fp16 convergence.')
+    parser.add_argument('--labels',
+                        type=str,
+                        required=True,
+                        help='Comma seperated labels for the corresponding dataset.')
 
     args = parser.parse_args()
 
@@ -431,6 +477,7 @@ def main():
         "cola": ColaProcessor,
         "mnli": MnliProcessor,
         "mrpc": MrpcProcessor,
+        "generic": lambda: GenericDataProcessor(args.labels)
     }
 
     if args.local_rank == -1 or args.no_cuda:
@@ -483,7 +530,7 @@ def main():
             len(train_examples) / args.train_batch_size / args.gradient_accumulation_steps * args.num_train_epochs)
 
     # Prepare model
-    model = BertForSequenceClassification.from_pretrained(args.bert_model, 
+    model = BertForSequenceClassification.from_pretrained(args.bert_model,
                 cache_dir=PYTORCH_PRETRAINED_BERT_CACHE / 'distributed_{}'.format(args.local_rank))
     if args.fp16:
         model.half()
