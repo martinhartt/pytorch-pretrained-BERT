@@ -477,7 +477,7 @@ def main():
         "cola": ColaProcessor,
         "mnli": MnliProcessor,
         "mrpc": MrpcProcessor,
-        "generic": lambda: GenericDataProcessor(args.labels)
+        "generic": lambda: GenericDataProcessor(args.labels.split(","))
     }
 
     if args.local_rank == -1 or args.no_cuda:
