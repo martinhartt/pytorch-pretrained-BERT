@@ -102,7 +102,7 @@ class DataProcessor(object):
         """Reads a comma separated value file."""
         import pandas as pd
         df = pd.read_csv(input_file)
-        return df.iterrows()[1]
+        return df.iterrows()
 
 
 class MrpcProcessor(DataProcessor):
@@ -163,7 +163,7 @@ class GenericDataProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         examples = []
         for i, line in enumerate(lines):
-            print(i, lines)
+            print(i, line)
             guid = "%s-%s" % (set_type, i)
             text_a = line["text"]
             label = line["tag"]
