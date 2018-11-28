@@ -640,6 +640,7 @@ def main():
         model.eval()
         eval_loss, eval_accuracy = 0, 0
         nb_eval_steps, nb_eval_examples = 0, 0
+        predicted, actual = [], []
         for input_ids, input_mask, segment_ids, label_ids in eval_dataloader:
             input_ids = input_ids.to(device)
             input_mask = input_mask.to(device)
@@ -653,6 +654,9 @@ def main():
             label_ids = label_ids.to('cpu').numpy()
             tmp_eval_accuracy = accuracy(logits, label_ids)
 
+            predicted += np.argmax(logits, axis=1).tolist()
+            actual += label_ids.tolist()
+
             eval_loss += tmp_eval_loss.mean().item()
             eval_accuracy += tmp_eval_accuracy
 
@@ -662,10 +666,14 @@ def main():
         eval_loss = eval_loss / nb_eval_steps
         eval_accuracy = eval_accuracy / nb_eval_examples
 
+        from sklearn.metrics import classification_report
+        print(classification_report(actual, predicted, target_names=label_list))
+
         result = {'eval_loss': eval_loss,
                   'eval_accuracy': eval_accuracy,
                   'global_step': global_step,
-                  'loss': tr_loss/nb_tr_steps}
+                  'loss': tr_loss/nb_tr_steps,
+                  }
 
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
         with open(output_eval_file, "w") as writer:
