@@ -163,6 +163,7 @@ class GenericDataProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         examples = []
         for i, line in enumerate(lines):
+            print(i, lines)
             guid = "%s-%s" % (set_type, i)
             text_a = line["text"]
             label = line["tag"]
