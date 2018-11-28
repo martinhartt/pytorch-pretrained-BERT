@@ -102,7 +102,7 @@ class DataProcessor(object):
         """Reads a comma separated value file."""
         import pandas as pd
         df = pd.read_csv(input_file)
-        return df.iterrows()
+        return df.iterrows()[1]
 
 
 class MrpcProcessor(DataProcessor):
